@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-primary: #F7F6F1;
+    --surface-card: #FFFFFF;
+    --text-main: #111815;
+    --text-muted: #65736E;
+    --accent-emerald: #0D5C46;
+    --accent-emerald-light: #059669;
+    --status-amber: #D97706;
+    --status-red: #DC2626;
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-main);
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* Custom visual utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(17, 24, 21, 0.07);
+}
+
+.card-hover {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(13, 92, 70, 0.08), 0 4px 10px -2px rgba(17, 24, 21, 0.03);
+}
+
+/* Market shock transition flash */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.03); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite ease-in-out;
+}
+
+@keyframes shock-flash {
+  0% { background-color: rgba(220, 38, 38, 0.15); }
+  100% { background-color: transparent; }
+}
+
+.shock-trigger-active {
+  animation: shock-flash 1.2s ease-out;
+}
+
+/* Custom SVG flow animation */
+@keyframes dash-flow {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animated-flow-line {
+  stroke-dasharray: 6 6;
+  animation: dash-flow 1.5s linear infinite;
+}
