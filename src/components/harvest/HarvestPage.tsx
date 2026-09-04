@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useAgriPilot } from '../../context/AgriPilotContext';
 import { HarvestItem } from '../../data/harvest';
-import { Sprout, Plus, Edit2, Trash2, Search, Calendar, Clock, Warehouse, CheckCircle2 } from 'lucide-react';
+import { Sprout, Plus, Edit2, Trash2, Search, Calendar, Clock, Warehouse, ChevronDown } from 'lucide-react';
+import { RainDripBorder, RestingLeaf } from '../ui/RainDripBorder';
 
 export const HarvestPage: React.FC = () => {
   const { harvestList, addHarvestItem, editHarvestItem, deleteHarvestItem } = useAgriPilot();
@@ -9,7 +10,6 @@ export const HarvestPage: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<HarvestItem | null>(null);
 
-  // Form local state
   const [cropName, setCropName] = useState('Tomato');
   const [variety, setVariety] = useState('Hybrid Grade A');
   const [quantityKg, setQuantityKg] = useState<number>(500);
@@ -17,9 +17,10 @@ export const HarvestPage: React.FC = () => {
   const [storageLimitDays, setStorageLimitDays] = useState<number>(3);
   const [status, setStatus] = useState<HarvestItem['status']>('READY');
 
-  const filteredList = harvestList.filter((item) =>
-    item.cropName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.variety.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredList = harvestList.filter(
+    (item) =>
+      item.cropName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.variety.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleOpenAdd = () => {
@@ -59,32 +60,30 @@ export const HarvestPage: React.FC = () => {
 
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingItem) {
-      editHarvestItem(editingItem.id, {
-        cropName,
-        variety,
-        quantityKg,
-        harvestDate,
-        storageLimitDays,
-        status,
-        estimatedValue: quantityKg * 25,
-      });
-      setEditingItem(null);
-    }
+    if (!editingItem) return;
+    editHarvestItem(editingItem.id, {
+      cropName,
+      variety,
+      quantityKg,
+      harvestDate,
+      storageLimitDays,
+      status,
+      estimatedValue: quantityKg * 25,
+    });
+    setEditingItem(null);
   };
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="bg-surface rounded-2xl border border-charcoal/10 p-6 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-surface relative overflow-hidden rounded-2xl border border-charcoal/10 p-6 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4 group">
+        <RestingLeaf position="top-right" />
+        <RainDripBorder side="both" />
         <div>
           <div className="flex items-center space-x-2">
             <Sprout className="w-6 h-6 text-emerald-700" />
-            <h1 className="text-2xl font-black text-charcoal tracking-tight">MY HARVEST MANAGEMENT</h1>
+            <h1 className="text-2xl font-black text-charcoal tracking-tight">Harvest</h1>
           </div>
-          <p className="text-xs text-charcoal-muted mt-1">
-            Track produce growth schedules, harvest timing, and storage decay limits.
-          </p>
+          <p className="text-xs text-charcoal-muted mt-1">Track only the fields that help you decide what to do next.</p>
         </div>
 
         <div className="flex items-center space-x-3">
@@ -108,14 +107,15 @@ export const HarvestPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Harvest Grid Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {filteredList.map((item) => {
+        {filteredList.map((item, index) => {
           const isReady = item.status === 'READY';
+          const agriStyle = ['agri-card agri-leaf-side', 'agri-card agri-flower-corner', 'agri-card agri-field-lines agri-seed-drift'][index % 3];
+
           return (
             <div
               key={item.id}
-              className="bg-surface rounded-2xl border border-charcoal/10 p-6 shadow-card hover:border-emerald-500/40 transition-all flex flex-col justify-between"
+              className={`${agriStyle} bg-surface rounded-2xl border border-charcoal/10 p-6 shadow-card hover:border-emerald-500/40 transition-all flex flex-col justify-between`}
             >
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -142,26 +142,34 @@ export const HarvestPage: React.FC = () => {
                     </span>
                     <span className="font-bold text-charcoal">{item.harvestDate}</span>
                   </div>
-
                   <div className="flex items-center justify-between text-charcoal-muted">
                     <span className="flex items-center space-x-1.5">
                       <Warehouse className="w-3.5 h-3.5 text-amber-600" />
-                      <span>Storage Decay Limit</span>
+                      <span>Storage Limit</span>
                     </span>
-                    <span className="font-bold text-charcoal">{item.storageLimitDays} Days</span>
+                    <span className="font-bold text-charcoal">{item.storageLimitDays} days</span>
                   </div>
-
                   <div className="flex items-center justify-between text-charcoal-muted">
                     <span className="flex items-center space-x-1.5">
                       <Clock className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>Field Location</span>
+                      <span>Field</span>
                     </span>
                     <span className="font-medium text-charcoal">{item.fieldLocation}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
+              <details className="mt-4 rounded-xl border border-charcoal/10 bg-surface-subtle/60">
+                <summary className="cursor-pointer list-none px-3 py-2 text-xs font-bold text-charcoal flex items-center justify-between">
+                  More details
+                  <ChevronDown className="w-4 h-4 text-charcoal-light" />
+                </summary>
+                <div className="px-3 pb-3 text-[11px] text-charcoal-muted space-y-1">
+                  <p>Estimated value: ₹{item.estimatedValue.toLocaleString()}</p>
+                  <p>Status: {item.status}</p>
+                </div>
+              </details>
+
               <div className="mt-6 pt-3 border-t border-charcoal/10 flex items-center justify-end space-x-2">
                 <button
                   onClick={() => handleOpenEdit(item)}
@@ -183,7 +191,6 @@ export const HarvestPage: React.FC = () => {
         })}
       </div>
 
-      {/* Add Produce Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-sm flex items-center justify-center p-4">
           <form
@@ -197,7 +204,7 @@ export const HarvestPage: React.FC = () => {
                 onClick={() => setIsAddModalOpen(false)}
                 className="text-charcoal-muted hover:text-charcoal font-bold text-sm"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -278,7 +285,6 @@ export const HarvestPage: React.FC = () => {
         </div>
       )}
 
-      {/* Edit Produce Modal */}
       {editingItem && (
         <div className="fixed inset-0 z-50 bg-charcoal/60 backdrop-blur-sm flex items-center justify-center p-4">
           <form
@@ -292,7 +298,7 @@ export const HarvestPage: React.FC = () => {
                 onClick={() => setEditingItem(null)}
                 className="text-charcoal-muted hover:text-charcoal font-bold text-sm"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -312,7 +318,7 @@ export const HarvestPage: React.FC = () => {
                 <label className="font-bold text-charcoal block mb-1">Status</label>
                 <select
                   value={status}
-                  onChange={(e) => setStatus(e.target.value as any)}
+                  onChange={(e) => setStatus(e.target.value as HarvestItem['status'])}
                   className="w-full p-2.5 rounded-lg border border-charcoal/20 bg-surface font-semibold"
                 >
                   <option value="READY">READY</option>

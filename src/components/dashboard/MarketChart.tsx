@@ -56,7 +56,7 @@ export const MarketChart: React.FC = () => {
   const activeData = timeframe === '24H' ? chartData24H : timeframe === '7D' ? chartData7D : chartData30D;
 
   return (
-    <div className="bg-surface rounded-2xl border border-charcoal/10 p-6 shadow-card">
+    <div className="agri-card agri-field-lines bg-surface rounded-2xl border border-charcoal/10 p-6 shadow-card">
       {/* Chart Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>

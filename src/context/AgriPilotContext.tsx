@@ -7,7 +7,7 @@ import { ShipmentItem, sampleShipments } from '../data/shipments';
 import { ActivityLog, initialActivityLogs, shockActivityLog } from '../data/activity';
 import { ExternalSignal, sampleExternalSignals } from '../data/signals';
 import { RecommendationPlan, baselineRecommendation, shockRecommendation } from '../data/recommendations';
-import { apiService, BackendStatus } from '../services/api';
+import { apiService, BackendStatus, AuthUser } from '../services/api';
 import { wsService } from '../services/wsService';
 
 export type NavTab = 
@@ -18,6 +18,7 @@ export type NavTab =
   | 'buyers'
   | 'shipments'
   | 'ask-agripilot'
+  | 'live-demo'
   | 'activity';
 
 export interface ToastMessage {
@@ -36,13 +37,14 @@ interface AgriPilotContextType {
   markets: MarketSnapshot[];
   buyers: BuyerProfile[];
   harvestList: HarvestItem[];
-  addHarvestItem: (item: Omit<HarvestItem, 'id'>) => void;
-  editHarvestItem: (id: string, updated: Partial<HarvestItem>) => void;
-  deleteHarvestItem: (id: string) => void;
+  addHarvestItem: (item: Omit<HarvestItem, 'id'>) => Promise<void>;
+  editHarvestItem: (id: string, updated: Partial<HarvestItem>) => Promise<void>;
+  deleteHarvestItem: (id: string) => Promise<void>;
   shipments: ShipmentItem[];
   activityLogs: ActivityLog[];
   signals: ExternalSignal[];
   recommendation: RecommendationPlan;
+  currentUser: AuthUser | null;
   backendStatus: {
     health: string;
     version: string;
@@ -60,11 +62,17 @@ interface AgriPilotContextType {
   selectedCrop: string;
   setSelectedCrop: (crop: string) => void;
   sendChatMessage: (msg: string) => Promise<any>;
+  logout: () => void;
 }
 
 const AgriPilotContext = createContext<AgriPilotContextType | undefined>(undefined);
 
-export const AgriPilotProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AgriPilotProvider: React.FC<{
+  children: React.ReactNode;
+  authToken: string | null;
+  authenticatedUser: AuthUser | null;
+  onLogout: () => void;
+}> = ({ children, authToken, authenticatedUser, onLogout }) => {
   const [activeTab, setActiveTab] = useState<NavTab>('mission-control');
   const [isShocked, setIsShocked] = useState<boolean>(false);
   const [farmer, setFarmer] = useState<FarmerProfile>(initialFarmerContext);
@@ -75,6 +83,7 @@ export const AgriPilotProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>(initialActivityLogs);
   const [markets, setMarkets] = useState<MarketSnapshot[]>(baselineMarkets);
   const [recommendation, setRecommendation] = useState<RecommendationPlan>(baselineRecommendation);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(authenticatedUser);
   const [backendStatus, setBackendStatus] = useState<BackendStatus | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [selectedCrop, setSelectedCrop] = useState<string>('Tomato');
@@ -91,8 +100,27 @@ export const AgriPilotProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // 1. Initial Load from Backend API
+  const resetToDemoState = () => {
+    setCurrentUser(null);
+    setBackendStatus(null);
+    setIsShocked(false);
+    setFarmer(initialFarmerContext);
+    setHarvestList(initialHarvestList);
+    setBuyers(sampleBuyers);
+    setShipments(sampleShipments);
+    setSignals(sampleExternalSignals);
+    setActivityLogs(initialActivityLogs);
+    setMarkets(baselineMarkets);
+    setRecommendation(baselineRecommendation);
+    setSelectedCrop(initialFarmerContext.activeCrop);
+  };
+
   useEffect(() => {
+    if (!authToken) {
+      resetToDemoState();
+      return;
+    }
+
     async function loadBackendData() {
       const [bStatus, bFarmer, bMarkets, bRecommendation, bActivity, bBuyers, bHarvest, bShipments, bSignals] =
         await Promise.all([
@@ -149,10 +177,20 @@ export const AgriPilotProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
 
     loadBackendData();
-  }, []);
+  }, [authToken]);
 
-  // 2. Real-Time WebSocket Connection & Event Stream Handling
   useEffect(() => {
+    if (authToken && authenticatedUser) {
+      setCurrentUser(authenticatedUser);
+    }
+  }, [authToken, authenticatedUser]);
+
+  useEffect(() => {
+    if (!authToken) {
+      wsService.disconnect();
+      return;
+    }
+
     wsService.connect();
     const unsubscribe = wsService.subscribe((data) => {
       if (data.type === 'MARKET_CHANGED') {
@@ -181,8 +219,9 @@ export const AgriPilotProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     return () => {
       unsubscribe();
+      wsService.disconnect();
     };
-  }, []);
+  }, [authToken]);
 
   // 3. Genuine Market Shock Backend Trigger
   const toggleMarketShock = async () => {
@@ -229,12 +268,21 @@ export const AgriPilotProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return res;
   };
 
-  const addHarvestItem = (newItem: Omit<HarvestItem, 'id'>) => {
-    const item: HarvestItem = {
-      ...newItem,
-      id: `h-${Date.now()}`,
-    };
-    setHarvestList((prev) => [item, ...prev]);
+  const logout = () => {
+    apiService.clearStoredToken();
+    resetToDemoState();
+    onLogout();
+  };
+
+  const addHarvestItem = async (newItem: Omit<HarvestItem, 'id'>) => {
+    const createdItem = await apiService.addHarvestItem(newItem);
+    const item = createdItem
+      ? (createdItem as HarvestItem)
+      : {
+          ...newItem,
+          id: `h-${Date.now()}`,
+        };
+    setHarvestList((prev) => [item, ...prev.filter((harvestItem) => harvestItem.id !== item.id)]);
     addToast({
       type: 'success',
       title: 'PRODUCE ADDED',
@@ -242,9 +290,10 @@ export const AgriPilotProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
   };
 
-  const editHarvestItem = (id: string, updated: Partial<HarvestItem>) => {
+  const editHarvestItem = async (id: string, updated: Partial<HarvestItem>) => {
+    const updatedItem = await apiService.updateHarvestItem(id, updated);
     setHarvestList((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, ...updated } : item))
+      prev.map((item) => (item.id === id ? { ...(updatedItem ? updatedItem as HarvestItem : item), ...updated, id } : item))
     );
     addToast({
       type: 'info',
@@ -253,7 +302,8 @@ export const AgriPilotProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
   };
 
-  const deleteHarvestItem = (id: string) => {
+  const deleteHarvestItem = async (id: string) => {
+    await apiService.deleteHarvestItem(id);
     setHarvestList((prev) => prev.filter((item) => item.id !== id));
     addToast({
       type: 'warning',
@@ -280,6 +330,7 @@ export const AgriPilotProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         activityLogs,
         signals,
         recommendation,
+        currentUser,
         backendStatus,
         toasts,
         addToast,
@@ -287,6 +338,7 @@ export const AgriPilotProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         selectedCrop,
         setSelectedCrop,
         sendChatMessage,
+        logout,
       }}
     >
       {children}

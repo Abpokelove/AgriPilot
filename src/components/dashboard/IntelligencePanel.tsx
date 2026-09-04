@@ -74,7 +74,7 @@ export const IntelligencePanel: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* AGRIPILOT INTELLIGENCE PIPELINE */}
-      <div className="bg-surface rounded-2xl border border-charcoal/10 p-5 shadow-card">
+      <div className="agri-card agri-flower-corner bg-surface rounded-2xl border border-charcoal/10 p-5 shadow-card">
         <div className="flex items-center justify-between mb-4 border-b border-charcoal/5 pb-3">
           <div>
             <h3 className="text-xs font-black text-charcoal uppercase tracking-wider">
@@ -132,7 +132,7 @@ export const IntelligencePanel: React.FC = () => {
       </div>
 
       {/* EXPECTED OUTCOME FINANCIAL IMPACT */}
-      <div className="bg-emerald-900 text-white rounded-2xl p-5 shadow-floating border border-emerald-700/60 relative overflow-hidden">
+      <div className="agri-card agri-seed-drift bg-emerald-900 text-white rounded-2xl p-5 shadow-floating border border-emerald-700/60 relative overflow-hidden">
         {/* Subtle glow background */}
         <div className="absolute -right-10 -bottom-10 w-36 h-36 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none"></div>
 

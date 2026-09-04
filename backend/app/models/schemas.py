@@ -26,6 +26,28 @@ class HarvestItem(BaseModel):
     estimatedValue: float
     fieldLocation: str
 
+
+class HarvestCreateRequest(BaseModel):
+    cropName: str
+    variety: str
+    quantityKg: float
+    harvestDate: str
+    storageLimitDays: int
+    status: Literal["READY", "GROWING", "HARVESTED", "DISPATCHED"]
+    estimatedValue: float
+    fieldLocation: str
+
+
+class HarvestUpdateRequest(BaseModel):
+    cropName: Optional[str] = None
+    variety: Optional[str] = None
+    quantityKg: Optional[float] = None
+    harvestDate: Optional[str] = None
+    storageLimitDays: Optional[int] = None
+    status: Optional[Literal["READY", "GROWING", "HARVESTED", "DISPATCHED"]] = None
+    estimatedValue: Optional[float] = None
+    fieldLocation: Optional[str] = None
+
 class HistoricalPressurePoint(BaseModel):
     time: str
     price: float
@@ -143,3 +165,49 @@ class ChatResponse(BaseModel):
 class MarketShockRequest(BaseModel):
     market_id: str = "market-a"
     arrival_surge_pct: float = 70.0
+
+
+class AuthRegisterRequest(BaseModel):
+    fullName: str
+    mobileNumber: str
+    email: str
+    password: str
+    confirmPassword: str
+    location: str
+    primaryCrop: str
+
+
+class AuthLoginRequest(BaseModel):
+    identifier: str
+    password: str
+
+
+class AuthUser(BaseModel):
+    id: str
+    fullName: str
+    mobileNumber: str
+    email: str
+    location: str
+    primaryCrop: str
+    avatarSeed: str = "AP"
+    createdAt: str
+
+
+class AuthSession(BaseModel):
+    accessToken: str
+    tokenType: str = "bearer"
+    user: AuthUser
+
+
+class FarmerUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    farmName: Optional[str] = None
+    location: Optional[str] = None
+    region: Optional[str] = None
+    activeCrop: Optional[str] = None
+    quantityKg: Optional[float] = None
+    harvestTiming: Optional[str] = None
+    storageCapacityDays: Optional[int] = None
+    cashRequirement: Optional[float] = None
+    cashDeadline: Optional[str] = None
+    rating: Optional[float] = None

@@ -15,7 +15,7 @@ export const MarketNetwork: React.FC = () => {
   const allocHold = recommendation.allocations.find((a) => a.destinationId === 'hold')?.pct || 0;
 
   return (
-    <div className={`relative bg-surface rounded-2xl border p-6 shadow-card overflow-hidden transition-all duration-500 ${
+    <div className={`agri-card agri-leaf-side relative bg-surface rounded-2xl border p-6 shadow-card overflow-hidden transition-all duration-500 ${
       isShocked ? 'border-amber-400/80 ring-2 ring-amber-400/20' : 'border-charcoal/10'
     }`}>
       {/* Background Graphic Grid Accent */}

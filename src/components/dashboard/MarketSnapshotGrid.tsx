@@ -21,15 +21,16 @@ export const MarketSnapshotGrid: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {topMarkets.map((m) => {
+        {topMarkets.map((m, index) => {
           const isPos = m.priceChangePct >= 0;
           const isCritical = m.supplyPressure === 'CRITICAL';
           const isHigh = m.supplyPressure === 'HIGH';
+          const agriStyle = ['agri-card agri-leaf-side', 'agri-card agri-flower-corner', 'agri-card agri-field-lines agri-seed-drift'][index % 3];
 
           return (
             <div
               key={m.id}
-              className={`bg-surface rounded-2xl border p-4 shadow-subtle card-hover flex flex-col justify-between ${
+              className={`${agriStyle} bg-surface rounded-2xl border p-4 shadow-subtle card-hover flex flex-col justify-between ${
                 isCritical
                   ? 'border-red-400 bg-red-50/40 ring-2 ring-red-400/20'
                   : 'border-charcoal/10'

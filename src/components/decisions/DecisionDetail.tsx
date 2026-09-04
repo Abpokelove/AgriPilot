@@ -11,7 +11,7 @@ export const DecisionDetail: React.FC = () => {
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       {/* Title Header */}
-      <div className="bg-surface rounded-2xl border border-charcoal/10 p-6 shadow-subtle flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="agri-card agri-leaf-side bg-surface rounded-2xl border border-charcoal/10 p-6 shadow-subtle flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
             <GitMerge className="w-6 h-6 text-emerald-700" />
@@ -51,7 +51,7 @@ export const DecisionDetail: React.FC = () => {
       </div>
 
       {/* Trade-Off Matrix Comparison */}
-      <div className="bg-surface rounded-2xl border border-charcoal/10 p-6 shadow-card">
+      <div className="agri-card agri-field-lines bg-surface rounded-2xl border border-charcoal/10 p-6 shadow-card">
         <h3 className="text-sm font-black uppercase text-charcoal tracking-wider mb-4">
           CHANNEL TRADE-OFF MATRIX & COMPARISON
         </h3>
@@ -152,7 +152,7 @@ export const DecisionDetail: React.FC = () => {
       </div>
 
       {/* RECOMMENDED PLAN BREAKDOWN & WHY SECTION */}
-      <div className="bg-surface rounded-2xl border border-charcoal/10 p-6 shadow-card space-y-4">
+      <div className="agri-card agri-flower-corner bg-surface rounded-2xl border border-charcoal/10 p-6 shadow-card space-y-4">
         <h3 className="text-base font-black text-charcoal">RECOMMENDED OPTIMAL ALLOCATION PLAN</h3>
 
         <div className="space-y-3">

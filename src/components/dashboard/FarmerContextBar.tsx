@@ -6,7 +6,7 @@ export const FarmerContextBar: React.FC = () => {
   const { farmer } = useAgriPilot();
 
   return (
-    <div className="bg-surface rounded-2xl border border-charcoal/10 p-4 shadow-subtle flex flex-wrap items-center justify-between gap-4">
+    <div className="agri-card agri-flower-corner bg-surface rounded-2xl border border-charcoal/10 p-4 shadow-subtle flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center space-x-3">
         <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shrink-0">
           <Sprout className="w-5 h-5" />

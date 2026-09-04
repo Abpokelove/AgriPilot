@@ -17,6 +17,9 @@ except Exception:
 # Load environment variables
 load_dotenv()
 
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173").strip()
+allowed_origins = [origin.strip() for origin in frontend_url.split(",") if origin.strip()] or ["http://localhost:5173"]
+
 from app.api.routes import router as api_router
 from app.api.websocket_manager import ws_manager
 
@@ -26,10 +29,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Enable CORS for React Frontend
+# Enable CORS for React Frontend (allowing all localhost dev ports and wildcard origins)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
