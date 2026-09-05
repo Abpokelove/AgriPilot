@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, TrendingUp, Sprout, Truck, MessageSquareCode } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Sprout, GitMerge, Activity } from 'lucide-react';
 import { useAgriPilot, NavTab } from '../../context/AgriPilotContext';
 
 interface MobileNavItem {
@@ -12,11 +12,11 @@ export const MobileNav: React.FC = () => {
   const { activeTab, setActiveTab } = useAgriPilot();
 
   const items: MobileNavItem[] = [
-    { id: 'mission-control', label: 'Home', icon: Home },
-    { id: 'markets', label: 'Markets', icon: TrendingUp },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'harvest', label: 'Harvest', icon: Sprout },
-    { id: 'shipments', label: 'Shipments', icon: Truck },
-    { id: 'ask-agripilot', label: 'Ask AI', icon: MessageSquareCode },
+    { id: 'harvest-plan', label: 'Plan', icon: GitMerge },
+    { id: 'markets', label: 'Markets', icon: TrendingUp },
+    { id: 'alerts', label: 'Alerts', icon: Activity },
   ];
 
   return (
@@ -24,7 +24,11 @@ export const MobileNav: React.FC = () => {
       <div className="grid grid-cols-5 gap-1">
         {items.map((item) => {
           const Icon = item.icon;
-          const isActive = activeTab === item.id;
+          const isActive =
+            activeTab === item.id ||
+            (item.id === 'dashboard' && activeTab === 'mission-control') ||
+            (item.id === 'harvest-plan' && activeTab === 'decisions') ||
+            (item.id === 'alerts' && activeTab === 'activity');
 
           return (
             <button

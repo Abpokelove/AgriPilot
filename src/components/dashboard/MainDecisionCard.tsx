@@ -87,10 +87,10 @@ export const MainDecisionCard: React.FC = () => {
               </p>
             </div>
             <button
-              onClick={() => setActiveTab('decisions')}
+              onClick={() => setActiveTab('harvest-plan')}
               className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/20"
             >
-              View Plan
+              View Plan ⭐
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>

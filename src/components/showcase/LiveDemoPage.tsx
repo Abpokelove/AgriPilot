@@ -29,7 +29,7 @@ export const LiveDemoPage: React.FC = () => {
     {
       label: 'Sense',
       title: primaryMarket ? `${primaryMarket.name} arrivals` : 'Market arrivals',
-      value: primaryMarket ? `${primaryMarket.arrivalsTonnes.toLocaleString()} t` : 'Live',
+      value: primaryMarket && primaryMarket.arrivalsTonnes != null ? `${primaryMarket.arrivalsTonnes.toLocaleString()} t` : 'Live',
       icon: Radio,
       tone: isShocked ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-emerald-100 text-emerald-900 border-emerald-300',
     },
@@ -64,7 +64,7 @@ export const LiveDemoPage: React.FC = () => {
           <div>
             <div className="live-pill inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/12 px-3 py-1 text-xs font-bold text-emerald-50">
               <Sparkles className="h-4 w-4 text-lime-200" />
-              JUDGE DEMO MODE
+              LIVE SCENARIO WORKSPACE
             </div>
             <h1 className="mt-4 text-3xl md:text-5xl font-black tracking-tight">Live AgriPilot Intelligence</h1>
             <p className="mt-3 max-w-2xl text-sm md:text-base text-emerald-50/82">

@@ -5,12 +5,19 @@ export interface MarketSnapshot {
   distanceKm: number;
   pricePerKg: number;
   priceChangePct: number;
-  arrivalsTonnes: number;
-  supplyPressure: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  arrivalsTonnes?: number | null;
+  supplyPressure: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" | "UNAVAILABLE";
   transportCostPerKg: number;
   updatedTimeAgo: string;
   sparkline: number[];
   historicalPressure: { time: string; price: number; arrivals: number }[];
+  source?: string;
+  sourceTimestamp?: string;
+  fetchedAt?: string;
+  freshness?: "FRESH" | "STALE" | "UNAVAILABLE";
+  sourceUrl?: string;
+  hasArrivalData?: boolean;
+  has_arrival_data?: boolean;
 }
 
 export const baselineMarkets: MarketSnapshot[] = [

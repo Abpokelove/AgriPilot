@@ -4,12 +4,9 @@ import {
   TrendingUp,
   Sprout,
   GitMerge,
-  MessageSquareCode,
   Store,
-  Truck,
   Activity,
   Settings,
-  Radar,
   ShieldCheck,
   LogOut,
 } from 'lucide-react';
@@ -27,15 +24,12 @@ export const Sidebar: React.FC<{ className?: string }> = ({ className }) => {
   const { activeTab, setActiveTab, isShocked, currentUser, logout } = useAgriPilot();
 
   const mainNav: NavItem[] = [
-    { id: 'mission-control', label: 'Mission Control', icon: LayoutDashboard },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'harvest', label: 'Harvest', icon: Sprout },
+    { id: 'harvest-plan', label: 'Harvest Plan', icon: GitMerge, badge: 'PLAN' },
     { id: 'markets', label: 'Markets', icon: TrendingUp },
-    { id: 'harvest', label: 'My Harvest', icon: Sprout },
-    { id: 'decisions', label: 'Decisions', icon: GitMerge },
-    { id: 'ask-agripilot', label: 'Ask AgriPilot', icon: MessageSquareCode, badge: 'AI' },
-    { id: 'live-demo', label: 'Live Demo', icon: Radar, badge: 'SHOW' },
-    { id: 'buyers', label: 'Buyers', icon: Store },
-    { id: 'shipments', label: 'Shipments', icon: Truck },
-    { id: 'activity', label: 'Activity & Signals', icon: Activity },
+    { id: 'buyers', label: 'Buyers / Demand', icon: Store },
+    { id: 'alerts', label: 'Alerts / Activity', icon: Activity },
   ];
 
   return (
@@ -76,7 +70,7 @@ export const Sidebar: React.FC<{ className?: string }> = ({ className }) => {
         </div>
         {mainNav.map((item) => {
           const Icon = item.icon;
-          const isActive = activeTab === item.id;
+          const isActive = activeTab === item.id || (item.id === 'dashboard' && activeTab === 'mission-control') || (item.id === 'harvest-plan' && activeTab === 'decisions') || (item.id === 'alerts' && activeTab === 'activity');
 
           return (
             <button
@@ -112,7 +106,7 @@ export const Sidebar: React.FC<{ className?: string }> = ({ className }) => {
             <Settings className="w-3.5 h-3.5" />
             <span>Settings</span>
           </button>
-          <span className="text-[10px] text-charcoal-light font-mono">v1.0-hackathon</span>
+          <span className="text-[10px] text-charcoal-light font-medium">AgriPilot System</span>
         </div>
 
         <div className="p-2.5 rounded-lg bg-surface border border-charcoal/5 flex items-center space-x-3">

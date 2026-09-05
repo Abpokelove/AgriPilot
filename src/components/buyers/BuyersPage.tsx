@@ -16,9 +16,9 @@ export const BuyersPage: React.FC = () => {
           <p className="text-xs text-charcoal-muted mt-1">A short list of who is paying well and paying on time.</p>
         </div>
 
-        <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">
-          <Info className="w-4 h-4 text-amber-600" />
-          <span>Demo data</span>
+        <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold">
+          <Info className="w-4 h-4 text-emerald-600" />
+          <span>Scenario market data</span>
         </div>
       </div>
 

@@ -11,14 +11,41 @@ export const ActivityPage: React.FC = () => {
         <div>
           <div className="flex items-center space-x-2">
             <Activity className="w-6 h-6 text-emerald-700" />
-            <h1 className="text-2xl font-black text-charcoal tracking-tight">Activity</h1>
+            <h1 className="text-2xl font-black text-charcoal tracking-tight">Alerts & Agentic Activity</h1>
           </div>
-          <p className="text-xs text-charcoal-muted mt-1">Live updates, without the noise.</p>
+          <p className="text-xs text-charcoal-muted mt-1">Autonomous multi-agent market monitoring & dynamic re-planning updates.</p>
         </div>
 
         <div className="flex items-center space-x-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-800">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Streaming</span>
+          <span>Agents Active</span>
+        </div>
+      </div>
+
+      {/* AGENTIC BEHAVIOR PRESENTATION (WHAT HAPPENED -> WHY -> WHAT SHOULD I DO) */}
+      <div className="agri-card agri-leaf-side bg-surface rounded-2xl border border-emerald-800/20 p-6 shadow-card space-y-4">
+        <h3 className="text-xs font-black uppercase tracking-wider text-emerald-800">
+          AGENTIC DECISION REASONING FLOW
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 rounded-xl bg-emerald-50/80 border border-emerald-200 space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 block">1. WHAT HAPPENED?</span>
+            <h4 className="text-sm font-extrabold text-charcoal">Market Arrivals Surge</h4>
+            <p className="text-xs text-charcoal-muted">Madurai / Market A arrivals increased by +70% overnight.</p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 block">2. WHY?</span>
+            <h4 className="text-sm font-extrabold text-charcoal">Supply Pressure Spike</h4>
+            <p className="text-xs text-charcoal-muted">Harvest glut in neighboring district caused price slippage risk.</p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-emerald-900 text-white space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 block">3. WHAT SHOULD I DO?</span>
+            <h4 className="text-sm font-extrabold text-white">Re-Route to Dindigul & Buyer B</h4>
+            <p className="text-xs text-emerald-100/80">AgriPilot re-allocated 50% to Market B and 30% to direct contract.</p>
+          </div>
         </div>
       </div>
 

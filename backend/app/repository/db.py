@@ -71,9 +71,9 @@ INIT_HARVEST: List[HarvestItem] = [
 
 INIT_MARKETS: List[MarketSnapshot] = [
     MarketSnapshot(
-        id="market-a",
-        name="Market A (Kolar APMC)",
-        location="Kolar APMC Yard",
+        id="kolar-apmc",
+        name="Kolar APMC Yard",
+        location="Kolar, KA",
         distanceKm=24.0,
         pricePerKg=27.0,
         priceChangePct=8.2,
@@ -92,9 +92,9 @@ INIT_MARKETS: List[MarketSnapshot] = [
         ],
     ),
     MarketSnapshot(
-        id="market-b",
-        name="Market B (Bengaluru Central)",
-        location="K R Market Yard",
+        id="bengaluru-kr-market",
+        name="Bengaluru K R Market",
+        location="Bengaluru, KA",
         distanceKm=42.0,
         pricePerKg=25.0,
         priceChangePct=2.1,
@@ -113,9 +113,9 @@ INIT_MARKETS: List[MarketSnapshot] = [
         ],
     ),
     MarketSnapshot(
-        id="market-c",
-        name="Market C (Hosur Wholesale)",
-        location="Hosur Border Terminal",
+        id="hosur-wholesale",
+        name="Hosur Wholesale Market",
+        location="Hosur, TN",
         distanceKm=38.0,
         pricePerKg=23.0,
         priceChangePct=-4.7,
@@ -134,9 +134,9 @@ INIT_MARKETS: List[MarketSnapshot] = [
         ],
     ),
     MarketSnapshot(
-        id="market-d",
-        name="Market D (Tumakuru Hub)",
-        location="Tumakuru Grain & Produce",
+        id="tumakuru-apmc",
+        name="Tumakuru APMC Yard",
+        location="Tumakuru, KA",
         distanceKm=65.0,
         pricePerKg=28.5,
         priceChangePct=4.5,
@@ -436,6 +436,18 @@ class DataRepository:
     def get_farmer_for_user(self, user_doc: Dict[str, Any]) -> FarmerProfile:
         return self._farmer_from_user(user_doc)
 
+    def update_farmer_crop(self, user_id: str, crop_name: str) -> Optional[FarmerProfile]:
+        user_doc = self.get_user_by_id(user_id)
+        if not user_doc:
+            self.farmer.activeCrop = crop_name
+            return self.farmer
+
+        now_str = datetime.utcnow().isoformat() + "Z"
+        updated_doc = self.update_user(user_id, {"primaryCrop": crop_name, "updatedAt": now_str})
+        if updated_doc:
+            return self._farmer_from_user(updated_doc)
+        return self._farmer_from_user(user_doc)
+
     def get_harvest(self) -> List[HarvestItem]:
         return self.harvest
 
@@ -478,6 +490,16 @@ class DataRepository:
         self._save_many("markets", self.markets)
         self._save_state_document({"_id": "app-state", "is_shocked": self.is_shocked})
         return self.markets
+
+    def update_market(self, updated_market: MarketSnapshot) -> None:
+        for idx, m in enumerate(self.markets):
+            if m.id == updated_market.id:
+                self.markets[idx] = updated_market.model_copy()
+                break
+        else:
+            self.markets.append(updated_market.model_copy())
+        self._sync_market_pressure()
+        self._save_many("markets", self.markets)
 
     def get_buyers(self) -> List[BuyerProfile]:
         return self.buyers

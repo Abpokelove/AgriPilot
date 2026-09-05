@@ -303,7 +303,13 @@ export const apiService = {
     fetchFromApi(`/harvest/${itemId}`, {
       method: 'DELETE',
     }),
-  getMarkets: () => fetchFromApi('/markets'),
+  updateCrop: (activeCrop: string) =>
+    fetchFromApi('/farmer/crop', {
+      method: 'PUT',
+      body: JSON.stringify({ activeCrop }),
+    }),
+  getMarkets: (crop?: string) =>
+    fetchFromApi(crop ? `/markets?crop=${encodeURIComponent(crop)}` : '/markets'),
   getBuyers: () => fetchFromApi('/buyers'),
   getShipments: () => fetchFromApi('/shipments'),
   getSignals: () => fetchFromApi('/signals'),

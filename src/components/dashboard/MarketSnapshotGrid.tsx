@@ -65,7 +65,7 @@ export const MarketSnapshotGrid: React.FC = () => {
               <div className="mt-4 pt-3 border-t border-charcoal/5 flex items-center justify-between text-xs">
                 <div>
                   <span className="text-[10px] text-charcoal-muted font-medium block">Arrivals</span>
-                  <span className="font-bold text-charcoal">{m.arrivalsTonnes.toLocaleString()} t</span>
+                  <span className="font-bold text-charcoal">{m.arrivalsTonnes != null ? `${m.arrivalsTonnes.toLocaleString()} t` : 'N/A'}</span>
                 </div>
 
                 <div className="text-right">

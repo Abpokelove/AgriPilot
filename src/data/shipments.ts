@@ -37,7 +37,7 @@ export const sampleShipments: ShipmentItem[] = [
   {
     id: "SH-9038",
     cropName: "Chilli",
-    destination: "Market A (Kolar APMC)",
+    destination: "Kolar APMC Yard",
     quantityKg: 250,
     status: "DELIVERED",
     etaMinutes: 0,

@@ -73,7 +73,7 @@ export const RestingLeaf: React.FC<RestingLeafProps> = ({ position = 'top-right'
         {/* Soft Glow Shadow behind leaf */}
         <div className="absolute inset-0 rounded-full bg-emerald-400/25 blur-md group-hover:bg-emerald-400/45 transition-colors" />
 
-        <svg viewBox="0 0 44 44" className="h-8 w-8 relative z-10 drop-shadow-[0_4px_10px_rgba(13,92,70,0.35)]">
+        <svg viewBox="0 0 44 44" className="h-10 w-10 relative z-10 drop-shadow-[0_4px_10px_rgba(13,92,70,0.35)]">
           {/* Leaf Outer Blade */}
           <path
             d="M22 3C30 9 36 19 22 38C8 19 14 9 22 3Z"
@@ -107,14 +107,6 @@ export const RestingLeaf: React.FC<RestingLeafProps> = ({ position = 'top-right'
             </linearGradient>
           </defs>
         </svg>
-
-        {/* Micro-sparkle ripple on hover */}
-        {isHovered && (
-          <span className="absolute -top-1 -right-1 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime-300 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-lime-400" />
-          </span>
-        )}
       </div>
     </div>
   );

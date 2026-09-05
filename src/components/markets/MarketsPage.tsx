@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useAgriPilot } from '../../context/AgriPilotContext';
-import { TrendingUp, TrendingDown, Search, MapPin, Building2, ChevronDown, HelpCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Search, MapPin, Building2, ChevronDown, HelpCircle, ShieldCheck } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { RainDripBorder, RestingLeaf } from '../ui/RainDripBorder';
 
@@ -37,16 +37,40 @@ export const MarketsPage: React.FC = () => {
             <p className="max-w-2xl text-sm text-charcoal-muted">
               AgriPilot ranks markets by crowding, demand, transport, and your storage limit, not just by raw price.
             </p>
+
+            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/90 px-3.5 py-1 text.xs font-medium text-emerald-900 shadow-sm">
+              <ShieldCheck className="h-4 w-4 text-emerald-700 shrink-0" />
+              <span>
+                Source: <strong>{selectedMarket?.source || 'Government of India (data.gov.in)'}</strong>
+              </span>
+              <span className="text-emerald-300">•</span>
+              <span className="rounded-full bg-emerald-800/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-800">
+                {selectedMarket?.freshness || 'FRESH'}
+              </span>
+              <span className="text-emerald-300">•</span>
+              <span className="text-emerald-700">{selectedMarket?.fetchedAt || 'Just Now'}</span>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 rounded-2xl border border-charcoal/10 bg-white px-3 py-2 text-xs font-semibold shadow-sm">
+              <span className="text-charcoal-muted uppercase text-[10px] font-extrabold tracking-wider">Crop:</span>
+              <input
+                type="text"
+                value={selectedCrop}
+                onChange={(e) => setSelectedCrop(e.target.value)}
+                placeholder="Enter crop name..."
+                className="w-32 bg-transparent text-sm font-bold text-emerald-900 outline-none placeholder:text-charcoal-light"
+              />
+            </div>
+
             <div className="flex items-center gap-1 rounded-2xl border border-charcoal/10 bg-surface-subtle p-1 text-xs font-semibold">
-              {['Tomato', 'Onion', 'Chilli', 'Potato'].map((crop) => (
+              {['Tomato', 'Onion', 'Chilli', 'Potato', 'Banana', 'Wheat'].map((crop) => (
                 <button
                   key={crop}
                   onClick={() => setSelectedCrop(crop)}
-                  className={`rounded-xl px-3 py-2 transition ${
-                    selectedCrop === crop ? 'bg-emerald-700 text-white shadow-sm' : 'text-charcoal-muted hover:text-charcoal'
+                  className={`rounded-xl px-2.5 py-1.5 transition ${
+                    selectedCrop.toLowerCase() === crop.toLowerCase() ? 'bg-emerald-700 text-white shadow-sm' : 'text-charcoal-muted hover:text-charcoal'
                   }`}
                 >
                   {crop}
@@ -61,7 +85,7 @@ export const MarketsPage: React.FC = () => {
                 placeholder="Search market"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-52 rounded-2xl border border-charcoal/10 bg-white px-9 py-2.5 text-sm text-charcoal outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                className="w-48 rounded-2xl border border-charcoal/10 bg-white px-9 py-2 text-sm text-charcoal outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
               />
             </div>
           </div>
@@ -75,6 +99,7 @@ export const MarketsPage: React.FC = () => {
             const isRecommended = market.id === recommendedMarketId;
             const isCrowded = market.supplyPressure === 'CRITICAL' || market.supplyPressure === 'HIGH';
             const isUp = market.priceChangePct >= 0;
+            const hasArrivals = market.arrivalsTonnes !== null && market.arrivalsTonnes !== undefined && market.hasArrivalData !== false;
             const agriStyle = ['agri-card agri-leaf-side', 'agri-card agri-flower-corner', 'agri-card agri-field-lines agri-seed-drift'][index % 3];
 
             return (
@@ -104,7 +129,7 @@ export const MarketsPage: React.FC = () => {
                   </div>
 
                   <div className="text-right">
-                    <p className="text-3xl font-black tracking-tight text-charcoal">₹{market.pricePerKg.toFixed(1)}</p>
+                    <p className="text-3xl font-black tracking-tight text-charcoal">₹{market.pricePerKg.toFixed(1)}/kg</p>
                     <span
                       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${
                         isUp ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
@@ -122,10 +147,10 @@ export const MarketsPage: React.FC = () => {
                       isCrowded ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-800'
                     }`}
                   >
-                    {isCrowded ? 'Very crowded' : 'Good demand'}
+                    {market.supplyPressure === 'UNAVAILABLE' ? 'Pressure: N/A' : isCrowded ? 'Very crowded' : 'Good demand'}
                   </span>
                   <span className="rounded-full bg-surface-subtle px-3 py-1 text-xs font-semibold text-charcoal-muted">
-                    {market.arrivalsTonnes.toLocaleString()} tonnes arriving
+                    {hasArrivals ? `${market.arrivalsTonnes?.toLocaleString()} tonnes arriving` : 'Arrival data unavailable'}
                   </span>
                   <span className="rounded-full bg-surface-subtle px-3 py-1 text-xs font-semibold text-charcoal-muted">
                     Transport ₹{market.transportCostPerKg}/kg
@@ -171,7 +196,7 @@ export const MarketsPage: React.FC = () => {
                   Today&apos;s arrivals are high, so price pressure is stronger here than at quieter options.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2 text-xs text-charcoal-muted">
-                  <span className="rounded-full bg-white px-3 py-1">Arrivals: {selectedMarket.arrivalsTonnes.toLocaleString()} t</span>
+                  <span className="rounded-full bg-white px-3 py-1">Arrivals: {selectedMarket.arrivalsTonnes != null ? `${selectedMarket.arrivalsTonnes.toLocaleString()} t` : 'Unavailable'}</span>
                   <span className="rounded-full bg-white px-3 py-1">Transport: ₹{selectedMarket.transportCostPerKg}/kg</span>
                   <span className="rounded-full bg-white px-3 py-1">Distance: {selectedMarket.distanceKm} km</span>
                 </div>
@@ -209,7 +234,7 @@ export const MarketsPage: React.FC = () => {
               <div className="mt-4 grid gap-2 sm:grid-cols-3 text-xs">
                 <div className="rounded-2xl bg-surface-subtle p-3">
                   <p className="font-bold text-charcoal">Arrivals</p>
-                  <p className="text-charcoal-muted">{selectedMarket.arrivalsTonnes.toLocaleString()} tonnes</p>
+                  <p className="text-charcoal-muted">{selectedMarket.arrivalsTonnes != null ? `${selectedMarket.arrivalsTonnes.toLocaleString()} tonnes` : 'Unavailable'}</p>
                 </div>
                 <div className="rounded-2xl bg-surface-subtle p-3">
                   <p className="font-bold text-charcoal">Transport</p>

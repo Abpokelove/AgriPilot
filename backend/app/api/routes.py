@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from typing import List
+from typing import List, Optional
 
 from app.api.websocket_manager import ws_manager
 from app.auth.security import get_current_user, hash_password, issue_session, user_public_profile, verify_password
@@ -17,6 +17,7 @@ from app.models.schemas import (
     ChatRequest,
     ChatResponse,
     FarmerProfile,
+    FarmerUpdateRequest,
     HarvestCreateRequest,
     HarvestItem,
     HarvestUpdateRequest,
@@ -130,6 +131,13 @@ def get_farmer(current_user=Depends(get_current_user)):
     return repo.get_farmer_for_user(current_user)
 
 
+@router.put("/api/farmer/crop", response_model=FarmerProfile)
+def update_farmer_crop(payload: FarmerUpdateRequest, current_user=Depends(get_current_user)):
+    crop_name = payload.activeCrop or "Tomato"
+    updated_profile = repo.update_farmer_crop(current_user["id"], crop_name)
+    return updated_profile or repo.get_farmer_for_user(current_user)
+
+
 @router.get("/api/harvest", response_model=List[HarvestItem])
 def get_harvest(current_user=Depends(get_current_user)):
     return repo.get_harvest()
@@ -170,8 +178,9 @@ def delete_harvest_item(item_id: str, current_user=Depends(get_current_user)):
 
 
 @router.get("/api/markets", response_model=List[MarketSnapshot])
-def get_markets(current_user=Depends(get_current_user)):
-    return MarketService.get_markets()
+def get_markets(crop: Optional[str] = None, current_user=Depends(get_current_user)):
+    target_crop = crop or current_user.get("primaryCrop", "Tomato")
+    return MarketService.get_markets(crop_name=target_crop)
 
 
 @router.get("/api/buyers", response_model=List[BuyerProfile])
@@ -207,7 +216,7 @@ def handle_chat(req: ChatRequest, current_user=Depends(get_current_user)):
 @router.post("/api/demo/market-shock")
 async def trigger_market_shock(req: MarketShockRequest, current_user=Depends(get_current_user)):
     """
-    End-to-end demo flow:
+    End-to-end scenario flow:
     1. Market arrivals surge.
     2. Decision engine recalculates.
     3. Coordinator agent summarizes the updated recommendation.
@@ -215,6 +224,7 @@ async def trigger_market_shock(req: MarketShockRequest, current_user=Depends(get
     5. WebSocket broadcasts the change.
     """
     updated_markets = MarketService.apply_shock(req.market_id, req.arrival_surge_pct)
+    coordinator_agent.clear_cache()
     updated_recommendation = coordinator_agent.get_recommendation(farmer_id=current_user["id"])
 
     now_str = datetime.now().strftime("%I:%M %p")
@@ -255,6 +265,7 @@ async def trigger_market_shock(req: MarketShockRequest, current_user=Depends(get
 @router.post("/api/demo/reset")
 async def reset_demo_state(current_user=Depends(get_current_user)):
     reset_markets = MarketService.reset_shock()
+    coordinator_agent.clear_cache()
     updated_recommendation = coordinator_agent.get_recommendation(farmer_id=current_user["id"])
 
     event_payload = {

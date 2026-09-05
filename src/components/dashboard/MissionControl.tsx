@@ -44,7 +44,10 @@ export const MissionControl: React.FC = () => {
           </button>
         </div>
 
-        <div className="agri-card agri-leaf-side relative overflow-hidden rounded-3xl border border-charcoal/10 bg-surface p-5 shadow-card group">
+        <div 
+          onClick={() => setActiveTab('harvest-plan')}
+          className="agri-card agri-leaf-side relative overflow-hidden rounded-3xl border border-charcoal/10 bg-surface p-5 shadow-card group cursor-pointer hover:border-emerald-300 transition-all"
+        >
           <RestingLeaf position="top-left" />
           <RainDripBorder side="right" />
           <div className="flex items-center gap-2">
@@ -57,9 +60,14 @@ export const MissionControl: React.FC = () => {
           <p className="mt-2 text-sm text-charcoal-muted">
             {buyerAllocation ? `Better timing and lower transport cost.` : 'Choose the fastest route for today’s sale.'}
           </p>
-          <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-emerald-800">
-            <span className="rounded-full bg-emerald-100 px-3 py-1">18 km</span>
-            <span className="rounded-full bg-emerald-100 px-3 py-1">₹900</span>
+          <div className="mt-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800">
+              <span className="rounded-full bg-emerald-100 px-3 py-1">18 km</span>
+              <span className="rounded-full bg-emerald-100 px-3 py-1">₹900</span>
+            </div>
+            <span className="text-xs font-bold text-emerald-700 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+              View Plan <ArrowRight className="w-3.5 h-3.5" />
+            </span>
           </div>
         </div>
 

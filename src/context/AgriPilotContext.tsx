@@ -11,15 +11,18 @@ import { apiService, BackendStatus, AuthUser } from '../services/api';
 import { wsService } from '../services/wsService';
 
 export type NavTab = 
-  | 'mission-control'
-  | 'markets'
+  | 'dashboard'
   | 'harvest'
-  | 'decisions'
+  | 'harvest-plan'
+  | 'markets'
   | 'buyers'
   | 'shipments'
+  | 'alerts'
+  | 'mission-control'
+  | 'decisions'
+  | 'activity'
   | 'ask-agripilot'
-  | 'live-demo'
-  | 'activity';
+  | 'live-demo';
 
 export interface ToastMessage {
   id: string;
@@ -76,6 +79,7 @@ export const AgriPilotProvider: React.FC<{
   const [activeTab, setActiveTab] = useState<NavTab>('mission-control');
   const [isShocked, setIsShocked] = useState<boolean>(false);
   const [farmer, setFarmer] = useState<FarmerProfile>(initialFarmerContext);
+  const [selectedCrop, setSelectedCrop] = useState<string>(initialFarmerContext.activeCrop);
   const [harvestList, setHarvestList] = useState<HarvestItem[]>(initialHarvestList);
   const [buyers, setBuyers] = useState<BuyerProfile[]>(sampleBuyers);
   const [shipments, setShipments] = useState<ShipmentItem[]>(sampleShipments);
@@ -86,7 +90,26 @@ export const AgriPilotProvider: React.FC<{
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(authenticatedUser);
   const [backendStatus, setBackendStatus] = useState<BackendStatus | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  const [selectedCrop, setSelectedCrop] = useState<string>('Tomato');
+  const handleSelectCrop = async (newCrop: string) => {
+    const cleanCrop = newCrop.trim();
+    if (!cleanCrop) return;
+    setSelectedCrop(cleanCrop);
+    setFarmer((prev) => ({ ...prev, activeCrop: cleanCrop }));
+
+    if (authToken) {
+      try {
+        await apiService.updateCrop(cleanCrop);
+        const [freshMarkets, freshRec] = await Promise.all([
+          apiService.getMarkets(cleanCrop),
+          apiService.getRecommendation(),
+        ]);
+        if (freshMarkets) setMarkets(freshMarkets as any);
+        if (freshRec) setRecommendation(freshRec as any);
+      } catch (err) {
+        console.warn('[AgriPilot Context] Failed to update crop on backend:', err);
+      }
+    }
+  };
 
   const addToast = (toast: Omit<ToastMessage, 'id'>) => {
     const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
@@ -182,6 +205,17 @@ export const AgriPilotProvider: React.FC<{
   useEffect(() => {
     if (authToken && authenticatedUser) {
       setCurrentUser(authenticatedUser);
+      setFarmer((prev) => ({
+        ...prev,
+        id: authenticatedUser.id,
+        name: authenticatedUser.fullName || prev.name,
+        location: authenticatedUser.location || prev.location,
+        activeCrop: authenticatedUser.primaryCrop || prev.activeCrop,
+        farmName: `${authenticatedUser.location || 'Local'} Farm`,
+      }));
+      if (authenticatedUser.primaryCrop) {
+        setSelectedCrop(authenticatedUser.primaryCrop);
+      }
     }
   }, [authToken, authenticatedUser]);
 
@@ -336,7 +370,7 @@ export const AgriPilotProvider: React.FC<{
         addToast,
         removeToast,
         selectedCrop,
-        setSelectedCrop,
+        setSelectedCrop: handleSelectCrop,
         sendChatMessage,
         logout,
       }}

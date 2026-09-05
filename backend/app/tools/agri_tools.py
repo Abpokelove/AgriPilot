@@ -17,7 +17,8 @@ class AgriTools:
 
     @staticmethod
     def get_market_conditions() -> List[Dict[str, Any]]:
-        markets = MarketService.get_markets()
+        farmer = repo.get_farmer()
+        markets = MarketService.get_markets(crop_name=farmer.activeCrop)
         return [m.model_dump() for m in markets]
 
     @staticmethod
@@ -40,14 +41,14 @@ class AgriTools:
     @staticmethod
     def calculate_candidate_plans() -> RecommendationPlan:
         farmer = repo.get_farmer()
-        markets = MarketService.get_markets()
+        markets = MarketService.get_markets(crop_name=farmer.activeCrop)
         buyers = repo.get_buyers()
         return DecisionEngine.calculate_optimal_plan(farmer, markets, buyers)
 
     @staticmethod
     def validate_plan() -> Dict[str, Any]:
         farmer = repo.get_farmer()
-        markets = MarketService.get_markets()
+        markets = MarketService.get_markets(crop_name=farmer.activeCrop)
         buyers = repo.get_buyers()
         plan = DecisionEngine.calculate_optimal_plan(farmer, markets, buyers)
         return DecisionEngine.validate_plan(plan, farmer, markets, buyers)

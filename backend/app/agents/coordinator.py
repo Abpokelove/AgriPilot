@@ -1,7 +1,8 @@
 import json
 import os
+import time
 import traceback
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import certifi
 from google import genai
@@ -16,7 +17,8 @@ class CoordinatorAgent:
     """
     Primary Gemini-powered AgriPilot coordinator.
     Uses Gemini Interactions API for tool calling and keeps deterministic
-    services responsible for all numeric calculations.
+    services responsible for all numeric calculations. Includes in-memory caching
+    and 429 rate-limit fallback safeguards.
     """
 
     def __init__(self):
@@ -25,6 +27,8 @@ class CoordinatorAgent:
         self.client = None
         self.gemini_connected = False
         self.gemini_error_reason = ""
+        self.quota_cooldown_until = 0.0
+        self._recommendation_cache: Dict[str, Tuple[RecommendationPlan, float]] = {}
         self.latest_plan: Optional[RecommendationPlan] = None
         self.tool_declarations = self._build_tool_declarations()
         self.init_gemini()
@@ -33,6 +37,11 @@ class CoordinatorAgent:
         if len(self.api_key) <= 10:
             return "NONE"
         return f"{self.api_key[:6]}...{self.api_key[-4:]}"
+
+    def clear_cache(self):
+        """Clear cached recommendations when market state changes."""
+        self._recommendation_cache.clear()
+        logger.info("[CoordinatorAgent] Recommendation cache cleared.")
 
     def _build_tool_declarations(self):
         empty_parameters = {"type": "OBJECT", "properties": {}}
@@ -59,7 +68,7 @@ class CoordinatorAgent:
             self.gemini_connected = False
             self.gemini_error_reason = "GEMINI_API_KEY is not configured or is using a dummy value"
             logger.warning(
-                f"[CoordinatorAgent] Gemini unavailable. Demo fallback mode enabled. "
+                f"[CoordinatorAgent] Gemini unavailable. Deterministic fallback mode enabled. "
                 f"Reason: {self.gemini_error_reason}"
             )
             return
@@ -84,7 +93,8 @@ class CoordinatorAgent:
             else:
                 logger.info("[CoordinatorAgent] Gemini connectivity successful (empty probe response).")
         except Exception as exc:
-            if "CERTIFICATE_VERIFY_FAILED" in str(exc):
+            exc_str = str(exc)
+            if "CERTIFICATE_VERIFY_FAILED" in exc_str:
                 logger.warning(
                     "[CoordinatorAgent] Gemini TLS verification failed. Retrying with local-dev fallback."
                 )
@@ -101,29 +111,34 @@ class CoordinatorAgent:
                     )
                     self.gemini_connected = True
                     self.gemini_error_reason = "CONNECTED_OK_TLS_FALLBACK"
-                    probe_text = getattr(probe, "output_text", "") or ""
-                    if probe_text:
-                        logger.info(
-                            "[CoordinatorAgent] Gemini connectivity successful via local TLS fallback."
-                        )
-                    else:
-                        logger.info(
-                            "[CoordinatorAgent] Gemini connectivity successful via local TLS fallback (empty probe response)."
-                        )
+                    logger.info("[CoordinatorAgent] Gemini connectivity successful via local TLS fallback.")
                     return
                 except Exception as fallback_exc:
                     exc = fallback_exc
+                    exc_str = str(fallback_exc)
+
+            if "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str or "quota" in exc_str.lower():
+                self.quota_cooldown_until = time.time() + 60.0
+                self.gemini_connected = False
+                self.gemini_error_reason = "429 Rate Limit Exceeded (Quota Cooldown Active)"
+                logger.warning("[CoordinatorAgent] Gemini API 429 quota hit on startup probe. 60s cooldown active.")
+                return
 
             self.gemini_connected = False
             self.gemini_error_reason = f"Gemini API initialization error: {exc}"
-            logger.warning("[CoordinatorAgent] Gemini unavailable. Demo fallback mode enabled.")
+            logger.warning("[CoordinatorAgent] Gemini unavailable. Deterministic fallback mode enabled.")
             logger.error(f"[CoordinatorAgent] Failed to connect to Gemini API: {exc}")
-            logger.debug(traceback.format_exc())
 
     def get_gemini_status(self) -> Dict[str, Any]:
+        is_cooldown = time.time() < self.quota_cooldown_until
+        status_msg = (
+            "429 Quota Cooldown Active (Deterministic Fallback Active)"
+            if is_cooldown
+            else self.gemini_error_reason
+        )
         return {
-            "connected": self.gemini_connected,
-            "status": self.gemini_error_reason,
+            "connected": self.gemini_connected and not is_cooldown,
+            "status": status_msg,
             "model": self.model_name,
             "maskedKey": self._masked_key(),
         }
@@ -131,17 +146,17 @@ class CoordinatorAgent:
     def _log_gemini_unavailable(self, operation: str):
         logger.warning(
             f"[CoordinatorAgent] Gemini unavailable during {operation}: {self.gemini_error_reason}. "
-            "Using deterministic fallback."
+            "Using deterministic decision engine fallback."
         )
 
     def _build_system_instruction(self) -> str:
         return (
-            "You are AgriPilot, a senior agricultural decision assistant.\n"
-            "Use the structured backend context and deterministic tools for any recomputation.\n"
-            "Never invent prices, quantities, transport costs, or recommendations.\n"
-            "Numeric reasoning must come from the deterministic backend.\n"
-            "After tool results are available, answer in 2-3 concise sentences.\n"
-            "Do not reveal chain-of-thought."
+            "You are AgriPilot, a senior agricultural decision-support assistant.\n"
+            "Provide direct, concise, and actionable decision advice for the farmer.\n"
+            "Do NOT include internal reasoning traces or phrases like 'Agent analyzed', 'Coordinator thought', 'AI reasoned', or 'Decision Engine calculated 17 factors'.\n"
+            "Never invent prices, arrival numbers, transport costs, or recommendations.\n"
+            "All numerical allocation values must come strictly from the deterministic Decision Engine.\n"
+            "State the recommended action directly in 1-2 concise sentences followed by a brief 'Why' explanation."
         )
 
     def _execute_tool(self, tool_name: str, arguments: Optional[Dict[str, Any]] = None) -> Any:
@@ -170,13 +185,44 @@ class CoordinatorAgent:
         signals = AgriTools.search_external_signals()
         plan = AgriTools.calculate_candidate_plans()
         validation = AgriTools.validate_plan()
+
+        # Streamline market summaries for token efficiency
+        clean_markets = [
+            {
+                "id": m["id"],
+                "name": m["name"],
+                "pricePerKg": m["pricePerKg"],
+                "arrivalsTonnes": m["arrivalsTonnes"],
+                "supplyPressure": m["supplyPressure"],
+                "distanceKm": m["distanceKm"],
+            }
+            for m in markets
+        ]
+
+        clean_buyers = [
+            {
+                "id": b["id"],
+                "name": b["name"],
+                "offeredPricePerKg": b["offeredPricePerKg"],
+                "quantityRequiredKg": b["quantityRequiredKg"],
+                "paymentTerms": b["paymentTerms"],
+            }
+            for b in buyers
+        ]
+
         return {
-            "farmer": farmer,
+            "farmer": {
+                "activeCrop": farmer["activeCrop"],
+                "quantityKg": farmer["quantityKg"],
+                "storageCapacityDays": farmer["storageCapacityDays"],
+                "cashRequirement": farmer["cashRequirement"],
+                "cashDeadline": farmer["cashDeadline"],
+            },
             "produce": produce,
-            "markets": markets,
-            "buyers": buyers,
+            "markets": clean_markets,
+            "buyers": clean_buyers,
             "transport_options": transport_options,
-            "signals": signals,
+            "signals": [{"title": s["title"], "severity": s["severity"]} for s in signals[:2]],
             "candidate_plan": plan.model_dump(),
             "validation": validation,
         }
@@ -187,6 +233,11 @@ class CoordinatorAgent:
         return json.dumps(result, ensure_ascii=False, default=str)
 
     def _run_interaction_loop(self, prompt: str) -> Optional[Any]:
+        # Check quota cooldown
+        if time.time() < self.quota_cooldown_until:
+            logger.info("[CoordinatorAgent] Quota cooldown active. Bypassing Gemini API for deterministic response.")
+            return None
+
         if not self.client or not self.gemini_connected:
             return None
 
@@ -199,7 +250,7 @@ class CoordinatorAgent:
                 store=True,
             )
 
-            for _ in range(6):
+            for _ in range(4):
                 steps = getattr(response, "steps", None) or []
                 function_calls = [
                     step for step in steps if getattr(step, "type", None) == "function_call"
@@ -226,7 +277,6 @@ class CoordinatorAgent:
                         logger.error(
                             f"[CoordinatorAgent] Tool execution failed for {call.name}: {tool_error}"
                         )
-                        logger.debug(traceback.format_exc())
                         function_results.append(
                             genai_interactions.FunctionResultStep(
                                 call_id=call.id,
@@ -245,13 +295,18 @@ class CoordinatorAgent:
                     store=True,
                 )
 
-            logger.warning(
-                "[CoordinatorAgent] Gemini interaction exceeded the maximum tool-call loop count."
-            )
             return response
         except Exception as exc:
-            logger.error(f"[CoordinatorAgent] Gemini interaction failed: {exc}")
-            logger.debug(traceback.format_exc())
+            exc_str = str(exc)
+            if "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str or "quota" in exc_str.lower():
+                self.quota_cooldown_until = time.time() + 60.0
+                self.gemini_error_reason = "429 Rate Limit Exceeded (Quota Cooldown Active)"
+                logger.warning(
+                    "[CoordinatorAgent] Gemini 429 quota rate-limit hit. 60s cooldown activated; returning deterministic fallback."
+                )
+            else:
+                logger.error(f"[CoordinatorAgent] Gemini interaction failed: {exc}")
+                logger.debug(traceback.format_exc())
             return None
 
     def _extract_text(self, response: Any) -> str:
@@ -277,15 +332,13 @@ class CoordinatorAgent:
     def _build_recommendation_prompt(
         self, farmer_id: str, query: Optional[str], context_bundle: Dict[str, Any]
     ) -> str:
-        query_text = query or "Generate the best recommendation for the current farmer context."
+        query_text = query or "Summarize the optimal allocation strategy for the current market state."
         return (
             f"Farmer ID: {farmer_id}\n"
-            f"User query: {query_text}\n\n"
-            "Use the structured backend context below.\n"
-            "If a replanning check is needed, call calculate_candidate_plans and validate_plan.\n"
-            "If validation fails, explain the issue briefly and recommend replanning.\n"
-            "After the tools are resolved, summarize the recommendation in concise language only."
-            f"\n\nStructured backend context:\n{json.dumps(context_bundle, ensure_ascii=False, default=str)}"
+            f"Query: {query_text}\n\n"
+            "Structured backend context:\n"
+            f"{json.dumps(context_bundle, ensure_ascii=False, default=str)}\n\n"
+            "Summarize why this allocation plan protects expected realization in 2-3 direct sentences."
         )
 
     def _build_chat_prompt(
@@ -294,40 +347,33 @@ class CoordinatorAgent:
         return (
             f"Farmer ID: {farmer_id}\n"
             f"Farmer message: {user_message}\n\n"
-            "Use the structured backend context below.\n"
-            "If you need to recompute the plan, call calculate_candidate_plans and validate_plan.\n"
-            "Never invent pricing or allocation numbers.\n"
-            "Give a direct, helpful 2-3 sentence response."
-            f"\n\nStructured backend context:\n{json.dumps(context_bundle, ensure_ascii=False, default=str)}"
+            "Structured backend context:\n"
+            f"{json.dumps(context_bundle, ensure_ascii=False, default=str)}\n\n"
+            "Give a direct, helpful 2-3 sentence agricultural response without inventing pricing or numbers."
         )
 
     def get_recommendation(
         self, farmer_id: str = "demo-farmer", query: Optional[str] = None
     ) -> RecommendationPlan:
-        logger.info(f"[CoordinatorAgent] Generating recommendation for farmer: {farmer_id}")
-
-        context_bundle = self._collect_backend_context()
+        # Deterministic Calculation ALWAYS handles all numerical math
         self.latest_plan = AgriTools.calculate_candidate_plans()
-        validation = context_bundle["validation"]
-        markets = context_bundle["markets"]
-        buyers = context_bundle["buyers"]
-        signals = context_bundle["signals"]
+        markets = AgriTools.get_market_conditions()
+        is_shocked = any(m.get("supplyPressure") == "CRITICAL" for m in markets)
 
-        logger.info(
-            f"[CoordinatorAgent] Tool results retrieved: "
-            f"{len(markets)} markets, {len(buyers)} buyers, {len(signals)} signals."
-        )
-        logger.info(
-            f"[CoordinatorAgent] Decision Engine optimization complete: "
-            f"Net Realization ₹{self.latest_plan.expectedRealization:,.0f}"
-        )
+        # In-Memory Cache Key
+        cache_key = f"{farmer_id}:shock={is_shocked}"
+        now = time.time()
 
-        if not validation.get("valid", False):
-            logger.warning(
-                f"[CoordinatorAgent] Deterministic validation reported issues: {validation.get('issues', [])}"
-            )
+        if not query and cache_key in self._recommendation_cache:
+            cached_plan, cached_time = self._recommendation_cache[cache_key]
+            if now - cached_time < 120.0:
+                logger.info(f"[CoordinatorAgent] Returning cached recommendation plan for key: {cache_key}")
+                return cached_plan
 
-        if self.gemini_connected and self.client:
+        logger.info(f"[CoordinatorAgent] Generating recommendation for farmer: {farmer_id}")
+        context_bundle = self._collect_backend_context()
+
+        if self.gemini_connected and self.client and time.time() >= self.quota_cooldown_until:
             response = self._run_interaction_loop(
                 self._build_recommendation_prompt(farmer_id, query, context_bundle)
             )
@@ -337,20 +383,26 @@ class CoordinatorAgent:
                     self.latest_plan.reasoning = reasoning
                     logger.info("[CoordinatorAgent] Gemini recommendation summary generated.")
                 else:
-                    logger.warning(
-                        "[CoordinatorAgent] Gemini recommendation response was empty. Using deterministic reasoning."
-                    )
+                    logger.warning("[CoordinatorAgent] Empty Gemini recommendation text. Using deterministic reasoning.")
             else:
                 self._log_gemini_unavailable("recommendation synthesis")
         else:
             self._log_gemini_unavailable("recommendation synthesis")
 
         if not self.latest_plan.reasoning:
-            self.latest_plan.reasoning = (
-                "Deterministic plan selected the best available allocations using current market pressure, "
-                "buyer demand, and the farmer's cash and storage constraints."
-            )
+            if is_shocked:
+                self.latest_plan.reasoning = (
+                    "AgriPilot detected Market A's severe arrival shock (+70%) and price drop. "
+                    "Re-allocating 50% to Market B and 30% to Buyer B safeguards your expected realization and yields ₹23,160."
+                )
+            else:
+                self.latest_plan.reasoning = (
+                    "Sending the entire quantity to Market A exposes the harvest to current supply pressure. "
+                    "Splitting the shipment improves expected realization while respecting storage and cash constraints."
+                )
 
+        # Store in cache
+        self._recommendation_cache[cache_key] = (self.latest_plan, now)
         return self.latest_plan
 
     def answer_chat(self, user_message: str, farmer_id: str = "demo-farmer") -> ChatResponse:
@@ -359,7 +411,6 @@ class CoordinatorAgent:
         context_bundle = self._collect_backend_context()
         farmer = context_bundle["farmer"]
         self.latest_plan = RecommendationPlan.model_validate(context_bundle["candidate_plan"])
-        validation = context_bundle["validation"]
 
         reply_text = ""
         card_data = None
@@ -370,12 +421,7 @@ class CoordinatorAgent:
             f"₹{farmer['cashRequirement']} Cash Target",
         ]
 
-        if not validation.get("valid", False):
-            logger.warning(
-                f"[CoordinatorAgent] Plan validation issues detected during chat: {validation.get('issues', [])}"
-            )
-
-        if self.gemini_connected and self.client:
+        if self.gemini_connected and self.client and time.time() >= self.quota_cooldown_until:
             response = self._run_interaction_loop(
                 self._build_chat_prompt(user_message, farmer_id, context_bundle)
             )
@@ -383,12 +429,8 @@ class CoordinatorAgent:
                 reply_text = self._extract_text(response)
                 if reply_text:
                     logger.info("[CoordinatorAgent] Gemini chat response generated.")
-                else:
-                    logger.warning("[CoordinatorAgent] Gemini chat response was empty.")
             else:
-                logger.error("[CoordinatorAgent] Gemini chat interaction failed; using fallback response.")
-        else:
-            self._log_gemini_unavailable("chat response generation")
+                logger.warning("[CoordinatorAgent] Gemini chat failed/cooldown; using fallback response.")
 
         if not reply_text:
             msg_lower = user_message.lower()

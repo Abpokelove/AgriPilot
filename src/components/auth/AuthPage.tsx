@@ -1,12 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
   CheckCircle2,
   Leaf,
+  Loader2,
   Lock,
   Mail,
   MapPin,
+  Navigation,
   Phone,
   Sprout,
   User,
@@ -32,16 +34,108 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login', onAut
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
 
-  const [fullName, setFullName] = useState('Arjun Patel');
-  const [mobileNumber, setMobileNumber] = useState('9876543210');
-  const [email, setEmail] = useState('arjun@agripilot.demo');
-  const [password, setPassword] = useState('harvest123');
-  const [confirmPassword, setConfirmPassword] = useState('harvest123');
-  const [location, setLocation] = useState('Malur, Karnataka');
-  const [primaryCrop, setPrimaryCrop] = useState('Tomato');
-  const [identifier, setIdentifier] = useState('arjun@agripilot.demo');
+  const [fullName, setFullName] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [location, setLocation] = useState('');
+  const [primaryCrop, setPrimaryCrop] = useState('');
+  const [identifier, setIdentifier] = useState('');
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationNotice, setLocationNotice] = useState('');
 
   const isRegister = mode === 'register';
+
+  const detectLocation = (forceFresh = false) => {
+    if (!navigator.geolocation) {
+      setLocationNotice('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    setIsLocating(true);
+    setLocationNotice(forceFresh ? 'Fetching fresh live location...' : 'Detecting live location from browser...');
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const timestamp = Date.now();
+
+        let resolvedLocation = '';
+
+        // Try 1: BigDataCloud Reverse Geocoder
+        try {
+          const bdcRes = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en&_t=${timestamp}`
+          );
+          if (bdcRes.ok) {
+            const bdcData = await bdcRes.json();
+            const place = bdcData.locality || bdcData.city || bdcData.localityInfo?.informative?.[0]?.name || '';
+            const state = bdcData.principalSubdivision || bdcData.countryName || '';
+            const parts = [place, state].filter(Boolean);
+            if (parts.length > 0) {
+              resolvedLocation = parts.join(', ');
+            }
+          }
+        } catch (err) {
+          console.warn('[AgriPilot Reverse Geocode BDC Error]', err);
+        }
+
+        // Try 2: OpenStreetMap Nominatim Fallback
+        if (!resolvedLocation) {
+          try {
+            const nomRes = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&_t=${timestamp}`
+            );
+            if (nomRes.ok) {
+              const nomData = await nomRes.json();
+              const addr = nomData.address || {};
+              const place =
+                addr.village ||
+                addr.suburb ||
+                addr.town ||
+                addr.city ||
+                addr.county ||
+                addr.district ||
+                addr.state_district ||
+                '';
+              const state = addr.state || addr.country || '';
+              const parts = [place, state].filter(Boolean);
+              if (parts.length > 0) {
+                resolvedLocation = parts.join(', ');
+              }
+            }
+          } catch (err) {
+            console.warn('[AgriPilot Reverse Geocode Nominatim Error]', err);
+          }
+        }
+
+        if (!resolvedLocation) {
+          resolvedLocation = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+        }
+
+        setLocation(resolvedLocation);
+        setLocationNotice(`Live location updated: ${resolvedLocation}`);
+        setIsLocating(false);
+      },
+      (err) => {
+        console.warn('[AgriPilot Geolocation Error]', err);
+        setIsLocating(false);
+        setLocationNotice('Unable to access live GPS location. Please enter location manually.');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0, // Force fresh real-time position scan, bypass all cached positions
+      }
+    );
+  };
+
+  useEffect(() => {
+    if (isRegister && !location) {
+      detectLocation();
+    }
+  }, [isRegister]);
 
   const authBlurb = useMemo(
     () =>
@@ -95,27 +189,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login', onAut
     }
   };
 
-  const handleDemoLogin = async () => {
-    setErrorText('');
-    setIsLoading(true);
-
-    try {
-      const session = await apiService.demoLogin();
-      if (!session) {
-        setErrorText('Demo login failed. Please try again.');
-        return;
-      }
-
-      apiService.setStoredToken(session.accessToken);
-      onAuthenticate(session);
-    } catch (error) {
-      console.error('[AgriPilot Auth] Demo login failed:', error);
-      setErrorText('Demo login failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const toggleMode = (nextMode: AuthMode) => {
     setErrorText('');
     setMode(nextMode);
@@ -133,11 +206,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login', onAut
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55 }}
-          className="glass-panel auth-brand-panel relative overflow-hidden rounded-[2rem] border border-white/60 p-8 text-white shadow-[0_30px_80px_rgba(9,57,38,0.18)] md:p-10"
+          className="glass-panel auth-brand-panel relative rounded-[2rem] border border-white/60 p-8 text-white shadow-[0_30px_80px_rgba(9,57,38,0.18)] md:p-10"
         >
-          <RestingLeaf position="top-right" />
           <RainDripBorder side="left" />
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-800" />
+          <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-800 overflow-hidden pointer-events-none" />
           <BotanicalDecoration variant="contour" className="left-0 top-0 h-full w-full opacity-70" />
           <BotanicalDecoration variant="leaf" className="-right-10 top-8 rotate-[18deg]" />
           <BotanicalDecoration variant="flower" className="bottom-6 left-8 h-28 w-28 rotate-[-10deg]" />
@@ -145,14 +217,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login', onAut
           <div className="absolute -left-14 bottom-4 h-44 w-44 rounded-full bg-emerald-300/15 blur-3xl" />
 
           <div className="relative z-10 flex h-full flex-col justify-start space-y-6 md:space-y-8">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/12 ring-1 ring-white/15 backdrop-blur">
-                <Leaf className="h-6 w-6 text-lime-200" />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/12 ring-1 ring-white/15 backdrop-blur">
+                  <Leaf className="h-6 w-6 text-lime-200" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.35em] text-emerald-200/80">AgriPilot</p>
+                  <h1 className="text-2xl font-black tracking-tight md:text-3xl">Farmer-first decision intelligence</h1>
+                </div>
               </div>
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.35em] text-emerald-200/80">AgriPilot</p>
-                <h1 className="text-2xl font-black tracking-tight md:text-3xl">Farmer-first decision intelligence</h1>
-              </div>
+              <RestingLeaf position="header-inline" />
             </div>
 
             <div className="max-w-xl space-y-6 pt-2 pb-6 md:pt-4 md:pb-8">
@@ -177,9 +252,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login', onAut
                 ].map(([title, body], index) => (
                   <div
                     key={title}
-                    className={`agri-card ${index % 2 === 0 ? 'agri-leaf-side' : 'agri-field-lines'} relative overflow-hidden rounded-2xl border border-white/12 bg-white/8 p-4 backdrop-blur-sm group hover:border-lime-300/40 transition-colors`}
+                    className={`agri-card ${index % 2 === 0 ? 'agri-leaf-side' : 'agri-field-lines'} relative rounded-2xl border border-white/12 bg-white/8 p-4 backdrop-blur-sm group hover:border-lime-300/40 transition-colors`}
                   >
-                    <RestingLeaf position="top-right" className="opacity-0 group-hover:opacity-100 transition-opacity" />
                     <p className="text-sm font-bold text-white">{title}</p>
                     <p className="mt-1 text-xs leading-6 text-emerald-50/75">{body}</p>
                   </div>
@@ -195,8 +269,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login', onAut
           transition={{ duration: 0.55, delay: 0.1 }}
           className="relative flex items-center"
         >
-          <div className="auth-form-card glass-panel relative w-full overflow-hidden rounded-[2rem] border border-charcoal/10 p-5 shadow-[0_24px_70px_rgba(17,24,21,0.12)] md:p-8">
-            <RestingLeaf position="top-left" />
+          <div className="auth-form-card glass-panel relative w-full rounded-[2rem] border border-charcoal/10 p-5 shadow-[0_24px_70px_rgba(17,24,21,0.12)] md:p-8">
             <RainDripBorder side="right" />
             <BotanicalDecoration variant="vine" className="right-0 top-6 h-28 w-44 opacity-70" />
             <BotanicalDecoration variant="sprout" className="bottom-6 left-6 h-24 w-24 opacity-60" />
@@ -217,8 +290,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login', onAut
                   </p>
                 </div>
 
-                <div className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 md:flex">
-                  <Leaf className="h-7 w-7" />
+                <div className="flex items-center gap-2">
+                  <RestingLeaf position="header-inline" />
+                  <div className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 md:flex">
+                    <Leaf className="h-7 w-7" />
+                  </div>
                 </div>
               </div>
 
@@ -325,18 +401,44 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login', onAut
 
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
-                        <label className="mb-2 block text-xs font-bold uppercase tracking-[0.24em] text-charcoal-muted">
-                          Location / Village
-                        </label>
+                        <div className="mb-2 flex items-center justify-between">
+                          <label className="block text-xs font-bold uppercase tracking-[0.24em] text-charcoal-muted">
+                            Location / Village
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => detectLocation(true)}
+                            disabled={isLocating}
+                            className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 disabled:opacity-50 transition-colors"
+                            title="Refetch fresh live location using browser GPS"
+                          >
+                            {isLocating ? (
+                              <Loader2 className="h-3 w-3 animate-spin text-emerald-700" />
+                            ) : (
+                              <Navigation className="h-3 w-3 text-emerald-700" />
+                            )}
+                            <span>{isLocating ? 'Detecting...' : 'Auto-detect'}</span>
+                          </button>
+                        </div>
                         <div className="relative">
                           <MapPin className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-charcoal-light" />
                           <input
-                            className={`${fieldBase} pl-11`}
+                            className={`${fieldBase} pl-11 ${isLocating ? 'pr-10' : ''}`}
                             value={location}
                             onChange={(e) => setLocation(e.target.value)}
-                            placeholder="Malur, Karnataka"
+                            placeholder="e.g. Malur, Karnataka"
                           />
+                          {isLocating && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+                            </div>
+                          )}
                         </div>
+                        {locationNotice && (
+                          <p className="mt-1 text-[11px] text-charcoal-muted font-medium">
+                            {locationNotice}
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -420,18 +522,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login', onAut
                   <span>{isLoading ? 'Please wait...' : isRegister ? 'Create account' : 'Login to AgriPilot'}</span>
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </button>
-
-                {!isRegister && (
-                  <button
-                    type="button"
-                    onClick={handleDemoLogin}
-                    disabled={isLoading}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-bold text-emerald-800 transition-all hover:border-emerald-300 hover:bg-emerald-100 disabled:opacity-60"
-                  >
-                    <Sprout className="h-4 w-4 text-emerald-600" />
-                    <span>{isLoading ? 'Opening demo...' : 'Continue with demo account'}</span>
-                  </button>
-                )}
               </form>
 
               <div className="mt-6 rounded-2xl border border-charcoal/10 bg-surface-subtle px-4 py-4">

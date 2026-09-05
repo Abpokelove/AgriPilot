@@ -15,6 +15,9 @@ class FarmerProfile(BaseModel):
     cashDeadline: str = "Friday (Sept 5)"
     rating: float = 4.9
 
+class FarmerUpdateRequest(BaseModel):
+    activeCrop: Optional[str] = None
+
 class HarvestItem(BaseModel):
     id: str
     cropName: str
@@ -60,14 +63,21 @@ class MarketSnapshot(BaseModel):
     distanceKm: float
     pricePerKg: float
     priceChangePct: float
-    arrivalsTonnes: float
+    arrivalsTonnes: Optional[float] = None
+    hasArrivalData: bool = True
+    priceUnit: str = "₹/kg"
     referenceCapacityTonnes: float = 1500.0
-    supplyPressure: Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    supplyPressure: Literal["LOW", "MEDIUM", "HIGH", "CRITICAL", "UNAVAILABLE"]
     pressureScore: float
     transportCostPerKg: float
     updatedTimeAgo: str
     sparkline: List[float]
     historicalPressure: List[HistoricalPressurePoint]
+    source: str = "Government of India (data.gov.in)"
+    sourceTimestamp: str = "Today"
+    fetchedAt: str = "Just Now"
+    freshness: Literal["FRESH", "STALE", "UNAVAILABLE"] = "FRESH"
+    sourceUrl: str = "https://data.gov.in/resource/current-daily-price-various-commodities-various-markets-mandi"
 
 class BuyerProfile(BaseModel):
     id: str
@@ -106,10 +116,15 @@ class ExternalSignal(BaseModel):
     id: str
     type: Literal["ROAD ALERT", "FESTIVAL DEMAND", "APMC UPDATE", "WEATHER ALERT"]
     title: str
-    source: str
+    source: str = "Government of India (data.gov.in)"
     timestamp: str
     impactText: str
     severity: Literal["INFO", "WARNING", "CRITICAL", "POSITIVE"]
+    sourceUrl: str = "https://data.gov.in"
+    retrievedAt: str = "Just Now"
+    relevance: float = 0.90
+    confidence: float = 0.88
+    trustPassed: bool = True
 
 class PlanAllocation(BaseModel):
     destinationId: str

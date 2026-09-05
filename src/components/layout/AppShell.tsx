@@ -9,12 +9,10 @@ import { NatureAtmosphere, AtmosphereMode, AtmosphereDensity, getStoredAtmospher
 import { MissionControl } from '../dashboard/MissionControl';
 import { MarketsPage } from '../markets/MarketsPage';
 import { HarvestPage } from '../harvest/HarvestPage';
-import { DecisionDetail } from '../decisions/DecisionDetail';
+import { HarvestPlanPage } from '../decisions/HarvestPlanPage';
 import { BuyersPage } from '../buyers/BuyersPage';
-import { ShipmentsPage } from '../shipments/ShipmentsPage';
-import { AskAgriPilot } from '../assistant/AskAgriPilot';
-import { LiveDemoPage } from '../showcase/LiveDemoPage';
 import { ActivityPage } from '../activity/ActivityPage';
+import { AskAgriPilot } from '../assistant/AskAgriPilot';
 import { MobileNav } from './MobileNav';
 
 export const AppShell: React.FC = () => {
@@ -36,24 +34,24 @@ export const AppShell: React.FC = () => {
 
   const renderActiveTab = () => {
     switch (activeTab) {
+      case 'dashboard':
       case 'mission-control':
         return <MissionControl />;
-      case 'markets':
-        return <MarketsPage />;
       case 'harvest':
         return <HarvestPage />;
+      case 'harvest-plan':
       case 'decisions':
-        return <DecisionDetail />;
+      case 'shipments': // Merged: legacy shipment tab redirects directly to Harvest Plan logistics view!
+        return <HarvestPlanPage />;
+      case 'markets':
+        return <MarketsPage />;
       case 'buyers':
         return <BuyersPage />;
-      case 'shipments':
-        return <ShipmentsPage />;
-      case 'ask-agripilot':
-        return <AskAgriPilot />;
-      case 'live-demo':
-        return <LiveDemoPage />;
+      case 'alerts':
       case 'activity':
         return <ActivityPage />;
+      case 'ask-agripilot':
+        return <AskAgriPilot />;
       default:
         return <MissionControl />;
     }

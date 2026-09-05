@@ -23,11 +23,11 @@ export interface RecommendationPlan {
 }
 
 export const baselineRecommendation: RecommendationPlan = {
-  situationText: "High supply pressure detected in Market A",
+  situationText: "High arrival volume detected at Kolar APMC Yard",
   allocations: [
     {
-      destinationId: "market-a",
-      destinationName: "Market A (Kolar APMC)",
+      destinationId: "kolar-apmc",
+      destinationName: "Kolar APMC Yard",
       quantityKg: 400,
       pct: 50,
       pricePerKg: 27.0,
@@ -49,7 +49,7 @@ export const baselineRecommendation: RecommendationPlan = {
     },
     {
       destinationId: "hold",
-      destinationName: "Hold in Storage (Malur Warehouse)",
+      destinationName: "Hold in Storage (Farm Warehouse)",
       quantityKg: 200,
       pct: 25,
       pricePerKg: 28.5, // projected tomorrow price
@@ -60,20 +60,20 @@ export const baselineRecommendation: RecommendationPlan = {
     },
   ],
   expectedRealization: 21840,
-  baselineComparison: 20140, // sell all 800kg at market A with pressure
+  baselineComparison: 20140,
   pctImprovement: 8.4,
   downsideAvoided: 2400,
   spoilageEstimatePct: 2.5,
   transportCostTotal: 1500,
-  reasoning: "Sending the entire quantity to Market A exposes the harvest to current supply pressure. Splitting the shipment improves expected realization while respecting the storage and cash constraints.",
+  reasoning: "Splitting harvest across Kolar APMC Yard, direct buyer contract, and 24-hour warehouse storage improves expected realization while protecting against local supply pressure.",
 };
 
 export const shockRecommendation: RecommendationPlan = {
-  situationText: "CRITICAL supply pressure & price drop detected in Market A (-14.2%)",
+  situationText: "CRITICAL supply pressure & price drop detected at Kolar APMC Yard (-14.2%)",
   allocations: [
     {
-      destinationId: "market-b",
-      destinationName: "Market B (Bengaluru Central)",
+      destinationId: "bengaluru-kr-market",
+      destinationName: "Bengaluru K R Market",
       quantityKg: 400,
       pct: 50,
       pricePerKg: 25.4,
@@ -94,8 +94,8 @@ export const shockRecommendation: RecommendationPlan = {
       badgeText: "Contract Volume Increase",
     },
     {
-      destinationId: "market-a",
-      destinationName: "Market A (Kolar APMC)",
+      destinationId: "kolar-apmc",
+      destinationName: "Kolar APMC Yard",
       quantityKg: 160,
       pct: 20,
       pricePerKg: 21.0,
@@ -106,10 +106,10 @@ export const shockRecommendation: RecommendationPlan = {
     },
   ],
   expectedRealization: 23160,
-  baselineComparison: 16800, // if sold all at crashed Market A ₹21/kg
+  baselineComparison: 16800,
   pctImprovement: 37.8,
   downsideAvoided: 6360,
   spoilageEstimatePct: 1.8,
   transportCostTotal: 1710,
-  reasoning: "AgriPilot automatically detected Market A's severe arrival shock (+70%) and price drop. Re-allocating 50% to Market B and 30% to Buyer B safeguards your expected realization and yields ₹23,160.",
+  reasoning: "AgriPilot automatically detected Kolar APMC's severe arrival surge (+70%). Re-allocating 50% to Bengaluru K R Market and 30% to Buyer B safeguards your expected realization.",
 };

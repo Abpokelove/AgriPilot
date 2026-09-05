@@ -12,7 +12,7 @@ export const sampleExternalSignals: ExternalSignal[] = [
   {
     id: "sig-1",
     type: "ROAD ALERT",
-    title: "Highway Disruption Near Market A",
+    title: "Highway Disruption Near Kolar APMC",
     source: "Karnataka Traffic Intelligence",
     timestamp: "18 min ago",
     impactText: "+18 min transport delay on NH-75 route to Kolar APMC",

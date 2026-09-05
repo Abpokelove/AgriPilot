@@ -15,7 +15,8 @@ except Exception:
     pass
 
 # Load environment variables
-load_dotenv()
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")
+load_dotenv(dotenv_path=env_path, override=True)
 
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173").strip()
 allowed_origins = [origin.strip() for origin in frontend_url.split(",") if origin.strip()] or ["http://localhost:5173"]
